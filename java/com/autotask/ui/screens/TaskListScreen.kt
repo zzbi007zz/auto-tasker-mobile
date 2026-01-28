@@ -21,6 +21,7 @@ import com.autotask.ui.components.TaskCard
 @Composable
 fun TaskListScreen(
     tasks: List<Task>,
+    copiedData: String?,
     onAddTask: () -> Unit,
     onEditTask: (Task) -> Unit,
     onToggleTask: (Task) -> Unit,
@@ -28,6 +29,17 @@ fun TaskListScreen(
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(copiedData) {
+        if (copiedData != null) {
+            snackbarHostState.showSnackbar(
+                message = "Copied: $copiedData",
+                duration = SnackbarDuration.Long
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             LargeTopAppBar(
@@ -67,6 +79,7 @@ fun TaskListScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         modifier = modifier
     ) { paddingValues ->
         if (tasks.isEmpty()) {
@@ -95,7 +108,7 @@ fun TaskListScreen(
                         modifier = Modifier.animateItemPlacement()
                     )
                 }
-                
+
                 // Bottom spacing for FAB
                 item {
                     Spacer(modifier = Modifier.height(80.dp))

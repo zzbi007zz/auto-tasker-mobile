@@ -52,107 +52,135 @@ class AlarmReceiver : BroadcastReceiver() {
 
                     // Execute the action
                     when (action) {
-                        ActionType.NOTIFICATION -> showNotification(context, task.title, task.description)
-                        ActionType.OPEN_APP -> openApp(context, task.actionData)
-                        ActionType.PLAY_SOUND -> playSound(context, task.title)
-                    }
-                    
-                    // Update last triggered time
-                    database.taskDao().updateLastTriggered(taskId, System.currentTimeMillis())
-                    
-                    // Reschedule if it's a repeating task
-                    if (task.repeatType != "ONCE") {
-                        val scheduler = TaskScheduler(context, 
-                            com.autotask.data.repository.TaskRepository(database.taskDao()))
-                        scheduler.scheduleTask(task)
-                    } else {
-                        // Disable one-time task after execution
-                        database.taskDao().setTaskEnabled(taskId, false)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error processing alarm: ${e.message}")
-            } finally {
-                pendingResult.finish()
-            }
-        }
-    }
-
-    private fun showNotification(context: Context, title: String, message: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
-        // Create notification channel
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "AutoTask scheduled task notifications"
-                enableVibration(true)
-                setSound(
-                    RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-            }
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        // Create intent to open app
-        val contentIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            contentIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title)
-            .setContentText(message.ifBlank { "Scheduled task completed" })
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .build()
-
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
-        Log.d(TAG, "Notification shown: $title")
-    }
-
-    private fun openApp(context: Context, packageName: String) {
-        try {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(launchIntent)
-                Log.d(TAG, "Opened app: $packageName")
-            } else {
-                Log.e(TAG, "App not found: $packageName")
-                showNotification(context, "AutoTask", "Could not open app: $packageName")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error opening app: ${e.message}")
-        }
-    }
-
-    private fun playSound(context: Context, title: String) {
-        try {
-            val ringtone = RingtoneManager.getRingtone(
-                context,
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            )
-            ringtone?.play()
-            showNotification(context, title, "Alarm triggered - tap to dismiss")
-            Log.d(TAG, "Playing alarm sound for: $title")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error playing sound: ${e.message}")
-        }
-    }
-}
+                                                ActionType.NOTIFICATION -> showNotification(context, task.title, task.description)
+                                                ActionType.OPEN_APP -> openApp(context, task.actionData)
+                                                ActionType.PLAY_SOUND -> playSound(context, task.title)
+                                                ActionType.GOOGLE_SHEET_COPY -> copyFromGoogleSheet(context, task.actionData)
+                                            }
+                                            
+                                            // Update last triggered time
+                                            database.taskDao().updateLastTriggered(taskId, System.currentTimeMillis())
+                                            
+                                            // Reschedule if it's a repeating task
+                                            if (task.repeatType != "ONCE") {
+                                                val scheduler = TaskScheduler(context,
+                                                    com.autotask.data.repository.TaskRepository(database.taskDao()))
+                                                scheduler.scheduleTask(task)
+                                            } else {
+                                                // Disable one-time task after execution
+                                                database.taskDao().setTaskEnabled(taskId, false)
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error processing alarm: ${e.message}")
+                                    } finally {
+                                        pendingResult.finish()
+                                    }
+                                }
+                            }
+                        
+                            private fun copyFromGoogleSheet(context: Context, actionData: String) {
+                                val parts = actionData.split(',')
+                                val sheetUrl = parts.getOrNull(0) ?: ""
+                                val columnName = parts.getOrNull(1) ?: ""
+                        
+                                Log.d(TAG, "copyFromGoogleSheet triggered for URL: $sheetUrl, Column: $columnName")
+                        
+                                // TODO: Implement Google Sheets API to fetch data from the given URL and column.
+                                // This will require:
+                                // 1. Google Sign-In to get an access token.
+                                // 2. Google Sheets API client to make the request.
+                                // 3. Parsing the sheet data to get the content of the specified column.
+                        
+                                val fetchedData = "Placeholder data from $columnName" // Placeholder for fetched data
+                                saveCopiedData(context, fetchedData)
+                                showNotification(context, "AutoTask", "Copied data from Google Sheet.")
+                            }
+                        
+                            private fun saveCopiedData(context: Context, data: String) {
+                                val sharedPreferences = context.getSharedPreferences("autotask_prefs", Context.MODE_PRIVATE)
+                                with(sharedPreferences.edit()) {
+                                    putString("copied_data", data)
+                                    apply()
+                                }
+                                Log.d(TAG, "Saved copied data to SharedPreferences")
+                            }
+                        
+                            private fun showNotification(context: Context, title: String, message: String) {
+                                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                
+                                // Create notification channel
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    val channel = NotificationChannel(
+                                        CHANNEL_ID,
+                                        CHANNEL_NAME,
+                                        NotificationManager.IMPORTANCE_HIGH
+                                    ).apply {
+                                        description = "AutoTask scheduled task notifications"
+                                        enableVibration(true)
+                                        setSound(
+                                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                                            AudioAttributes.Builder()
+                                                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                                .build()
+                                        )
+                                    }
+                                    notificationManager.createNotificationChannel(channel)
+                                }
+                        
+                                // Create intent to open app
+                                val contentIntent = Intent(context, MainActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                                val pendingIntent = PendingIntent.getActivity(
+                                    context,
+                                    0,
+                                    contentIntent,
+                                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                                )
+                        
+                                val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                                    .setSmallIcon(R.drawable.ic_notification)
+                                    .setContentTitle(title)
+                                    .setContentText(message.ifBlank { "Scheduled task completed" })
+                                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                                    .setAutoCancel(true)
+                                    .setContentIntent(pendingIntent)
+                                    .setDefaults(NotificationCompat.DEFAULT_ALL)
+                                    .build()
+                        
+                                notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+                                Log.d(TAG, "Notification shown: $title")
+                            }
+                        
+                            private fun openApp(context: Context, packageName: String) {
+                                try {
+                                    val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+                                    if (launchIntent != null) {
+                                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(launchIntent)
+                                        Log.d(TAG, "Opened app: $packageName")
+                                    } else {
+                                        Log.e(TAG, "App not found: $packageName")
+                                        showNotification(.g, "AutoTask", "Could not open app: $packageName")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error opening app: ${e.message}")
+                                }
+                            }
+                        
+                            private fun playSound(context: Context, title: String) {
+                                try {
+                                    val ringtone = RingtoneManager.getRingtone(
+                                        context,
+                                        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                                    )
+                                    ringtone?.play()
+                                    showNotification(context, title, "Alarm triggered - tap to dismiss")
+                                    Log.d(TAG, "Playing alarm sound for: $title")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error playing sound: ${e.message}")
+                                }
+                            }
+                        }

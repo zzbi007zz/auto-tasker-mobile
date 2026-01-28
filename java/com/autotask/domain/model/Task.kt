@@ -13,7 +13,8 @@ enum class RepeatType {
 enum class ActionType {
     NOTIFICATION,
     OPEN_APP,
-    PLAY_SOUND
+    PLAY_SOUND,
+    GOOGLE_SHEET_COPY
 }
 
 data class Task(

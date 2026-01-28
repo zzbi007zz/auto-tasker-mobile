@@ -66,10 +66,23 @@ class MainActivity : ComponentActivity() {
 fun AutoTaskApp() {
     val navController = rememberNavController()
     val viewModel: TaskViewModel = hiltViewModel()
-    
+    val context = LocalContext.current
+
     val tasks by viewModel.tasks.collectAsState()
     val editState by viewModel.editState.collectAsState()
     val showTimePicker by viewModel.showTimePicker.collectAsState()
+
+    var copiedData by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val sharedPreferences = context.getSharedPreferences("autotask_prefs", Context.MODE_PRIVATE)
+        copiedData = sharedPreferences.getString("copied_data", null)
+        if (copiedData != null) {
+            with(sharedPreferences.edit()) {
+                remove("copied_data")
+                apply()
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -78,6 +91,7 @@ fun AutoTaskApp() {
         composable("task_list") {
             TaskListScreen(
                 tasks = tasks,
+                copiedData = copiedData,
                 onAddTask = {
                     viewModel.startEditing()
                     navController.navigate("task_edit")

@@ -5,20 +5,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.autotask.Credentials
+import android.util.Log
+import com.google.android.gms.common.api.ApiException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +22,33 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestIdToken(Credentials.OAUTH_CLIENT_ID)
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    val signInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            // Signed in successfully, show authenticated UI.
+            // TODO: Send account.idToken to your backend if you have one
+            // For now, just log success
+            Log.d("SettingsScreen", "Google Sign-In successful: ${account.displayName}")
+            // You might want to update UI or show a toast here
+        } catch (e: ApiException) {
+            // The ApiException status code indicates the detailed failure reason.
+            // Please refer to the GoogleSignInStatusCodes class reference for more information.
+            Log.w("SettingsScreen", "Google Sign-In failed code: ${e.statusCode}")
+            // You might want to update UI or show an error toast here
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -81,6 +102,16 @@ fun SettingsScreen(
                     title = "Notification Settings",
                     subtitle = "Manage notification channels",
                     onClick = { openNotificationSettings(context) }
+                )
+            }
+
+            // Integrations Section
+            SettingsSection(title = "Integrations") {
+                SettingsCard(
+                    icon = Icons.Default.Link,
+                    title = "Link Google Account",
+                    subtitle = "For Google Sheet integration",
+                    onClick = { signInLauncher.launch(googleSignInClient.signInIntent) }
                 )
             }
 

@@ -201,6 +201,7 @@ fun TaskEditScreen(
                                     ActionType.NOTIFICATION -> Icons.Default.Notifications
                                     ActionType.OPEN_APP -> Icons.Default.PhoneAndroid
                                     ActionType.PLAY_SOUND -> Icons.Default.VolumeUp
+                                    ActionType.GOOGLE_SHEET_COPY -> Icons.Default.Description
                                 },
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -211,6 +212,7 @@ fun TaskEditScreen(
                                     ActionType.NOTIFICATION -> "Show Notification"
                                     ActionType.OPEN_APP -> "Open App"
                                     ActionType.PLAY_SOUND -> "Play Alarm Sound"
+                                    ActionType.GOOGLE_SHEET_COPY -> "Copy from Google Sheet"
                                 }
                             )
                         }
@@ -224,6 +226,33 @@ fun TaskEditScreen(
                             onValueChange = onActionDataChange,
                             label = { Text("Package Name") },
                             placeholder = { Text("e.g., com.whatsapp") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    if (state.actionType == ActionType.GOOGLE_SHEET_COPY) {
+                        val (sheetUrl, columnName) = remember(state.actionData) {
+                            val parts = state.actionData.split(',')
+                            (parts.getOrNull(0) ?: "") to (parts.getOrNull(1) ?: "")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = sheetUrl,
+                            onValueChange = { onActionDataChange("$it,$columnName") },
+                            label = { Text("Google Sheet URL") },
+                            placeholder = { Text("Enter sheet URL") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = columnName,
+                            onValueChange = { onActionDataChange("$sheetUrl,$it") },
+                            label = { Text("Column Name") },
+                            placeholder = { Text("e.g., A") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
